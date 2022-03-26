@@ -23,6 +23,7 @@
     "ext-openssl": "*",
     "ext-curl": "*",
     "php": "^7.1.0",
+    "qiniu/php-sdk": "^7.4",
     "qingbing/zf-helper": "^1.0"
   },
   "autoload": {
