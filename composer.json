@@ -1,0 +1,33 @@
+{
+  "name": "qingbing/php-upload",
+  "description": "文件上传封装",
+  "type": "library",
+  "license": "MIT",
+  "keywords": [
+    "php",
+    "yii",
+    "yii2",
+    "upload",
+    "php-upload",
+    "phpUpload"
+  ],
+  "homepage": "http://www.phpcorner.net",
+  "authors": [
+    {
+      "name": "qingbing",
+      "email": "780042175@qq.com"
+    }
+  ],
+  "require": {
+    "ext-json": "*",
+    "ext-openssl": "*",
+    "ext-curl": "*",
+    "php": "^7.1.0",
+    "qingbing/zf-helper": "^1.0"
+  },
+  "autoload": {
+    "psr-4": {
+      "Zf\\PhpUpload\\": "src"
+    }
+  }
+}
