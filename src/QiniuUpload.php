@@ -64,6 +64,20 @@ class QiniuUpload extends BaseUpload
      * @var Auth 七牛云的鉴权对象
      */
     protected $auth;
+
+    /**
+     * @var 当前操作api
+     */
+    protected $currentApi;
+    /**
+     * @var 当前操作关键字
+     */
+    protected $currentKeyword;
+    /**
+     * @var 当前操作请求内容
+     */
+    protected $currentRequest;
+
     /**
      * 正常响应码
      */
@@ -227,6 +241,13 @@ class QiniuUpload extends BaseUpload
      */
     public function info($file)
     {
+        $this->currentApi     = 'qiniu:info:stat';
+        $this->currentKeyword = "获取文件信息";
+        $this->currentRequest = [
+            'bucket' => $this->getBucketName(),
+            'file'   => $file,
+        ];
+
         if (is_array($file)) {
             $ops      = BucketManager::buildBatchStat($this->getBucketName(), $file);
             $response = $this->getBucketManager()->batch($ops);
@@ -245,6 +266,13 @@ class QiniuUpload extends BaseUpload
      */
     public function setLifeTime($file, $day = 0)
     {
+        $this->currentApi     = 'qiniu:setLifeTime:deleteAfterDays';
+        $this->currentKeyword = "设置文件的生存时间";
+        $this->currentRequest = [
+            'bucket' => $this->getBucketName(),
+            'file'   => $file,
+            'day'    => $day,
+        ];
         if (is_array($file)) {
             // 批量设置
             $pairs = [];
@@ -274,6 +302,13 @@ class QiniuUpload extends BaseUpload
      */
     public function changeSaveType($file, $type)
     {
+        $this->currentApi     = 'qiniu:changeSaveType:changeType';
+        $this->currentKeyword = "修改文件的存储类型";
+        $this->currentRequest = [
+            'bucket' => $this->getBucketName(),
+            'file'   => $file,
+            'type'   => $type,
+        ];
         if (is_array($file)) {
             // 批量修改
             $pairs = [];
@@ -300,10 +335,11 @@ class QiniuUpload extends BaseUpload
      * @param mixed $file
      * @param string|null $folder
      * @param string|null $saveName
+     * @param bool $useTmp
      * @return array
      * @throws Exception
      */
-    public function upload($file, $folder = null, $saveName = null)
+    public function upload($file, $folder = null, $saveName = null, $useTmp = false)
     {
         if (is_array($file)) {
             $filepath = $file['tmp_name'];
@@ -313,13 +349,24 @@ class QiniuUpload extends BaseUpload
             $filename = $file;
         }
         if (empty($saveName)) {
-            $saveName = $this->generateSaveName($filename, $folder);
+            $saveName = $this->generateSaveName($filename, $folder, $useTmp);
         }
+        $this->currentApi     = 'qiniu:upload:putFile';
+        $this->currentKeyword = "修改文件的存储类型";
+        $this->currentRequest = [
+            'bucket'   => $this->getBucketName(),
+            'file'     => $file,
+            'folder'   => $folder,
+            'saveName' => $saveName,
+        ];
+
         $response = $this->getUploaderManager()
             ->putFile($this->getToken($saveName), $saveName, $filepath);
         $res      = $this->parseResponse($response);
-        if ($res['code'] == self::SUCCESS_CODE && $this->useTmp) {
-            $this->setLifeTime($res['key'], $this->tmpDay);
+        if ($res['code'] == self::SUCCESS_CODE) {
+            if ($useTmp) {
+                $this->setLifeTime($res['data']['key'], $this->tmpDay);
+            }
             $res['data']['code'] = self::SUCCESS_CODE;
             return $res['data'];
         }
@@ -338,6 +385,17 @@ class QiniuUpload extends BaseUpload
     public function copy($file, $newFile = null, $force = true, $newBucket = null)
     {
         $newBucket = empty($newBucket) ? $this->getBucketName() : $newBucket;
+
+        $this->currentApi     = 'qiniu:copy:copy';
+        $this->currentKeyword = "复制文件";
+        $this->currentRequest = [
+            'bucket'    => $this->getBucketName(),
+            'file'      => $file,
+            'newFile'   => $newFile,
+            'force'     => $force,
+            'newBucket' => $newBucket,
+        ];
+
         if (is_array($file)) {
             // 批量复制
             $ops      = BucketManager::buildBatchCopy($this->getBucketName(), $file, $newBucket, $force);
@@ -368,6 +426,17 @@ class QiniuUpload extends BaseUpload
     public function move($file, $newFile = null, $force = true, $newBucket = null)
     {
         $newBucket = empty($newBucket) ? $this->getBucketName() : $newBucket;
+
+        $this->currentApi     = 'qiniu:move:move';
+        $this->currentKeyword = "移动文件";
+        $this->currentRequest = [
+            'bucket'    => $this->getBucketName(),
+            'file'      => $file,
+            'newFile'   => $newFile,
+            'force'     => $force,
+            'newBucket' => $newBucket,
+        ];
+
         if (is_array($file)) {
             // 批量移动
             $ops      = BucketManager::buildBatchMove($this->getBucketName(), $file, $newBucket, $force);
@@ -394,6 +463,13 @@ class QiniuUpload extends BaseUpload
      */
     public function del($file)
     {
+        $this->currentApi     = 'qiniu:del:delete';
+        $this->currentKeyword = "删除文件";
+        $this->currentRequest = [
+            'bucket' => $this->getBucketName(),
+            'file'   => $file,
+        ];
+
         if (is_array($file)) {
             // 批量删除
             $ops      = BucketManager::buildBatchDelete($this->getBucketName(), $file);
@@ -425,6 +501,15 @@ class QiniuUpload extends BaseUpload
         }
         // 单个抓取
         $saveName = $this->generateSaveName($url, $folder); // 保存文件名
+
+        $this->currentApi     = 'qiniu:fetchUrl:fetch';
+        $this->currentKeyword = "删除文件";
+        $this->currentRequest = [
+            'bucket'   => $this->getBucketName(),
+            'url'      => $url,
+            'saveName' => $saveName,
+        ];
+
         $response = $this->getBucketManager()
             ->fetch($url, $this->getBucketName(), $saveName);
         return $this->parseResponse($response);
@@ -442,6 +527,16 @@ class QiniuUpload extends BaseUpload
      */
     public function list($limit = 1000, $marker = null, $prefix = null, $delimiter = null)
     {
+        $this->currentApi     = 'qiniu:list:listFiles';
+        $this->currentKeyword = "获取文件目录的文件列表";
+        $this->currentRequest = [
+            'bucket'    => $this->getBucketName(),
+            'prefix'    => $prefix,
+            'marker'    => $marker,
+            'limit'     => $limit,
+            'delimiter' => $delimiter,
+        ];
+
         $response = $this->getBucketManager()
             ->listFiles($this->getBucketName(), $prefix, $marker, $limit, $delimiter);
         $res      = $this->parseResponse($response);
@@ -464,10 +559,12 @@ class QiniuUpload extends BaseUpload
     {
         list($res, $error) = $result;
         if ($error && $error instanceof Error) {
-            return [
+            $response = [
                 'code'    => $error->code(),
                 'message' => $error->message(),
             ];
+            $this->errorLog($this->currentApi, $this->currentKeyword, $this->currentRequest, $error->message(), $response);
+            return $response;
         }
         if ($res && is_real_array($res)) {
             return $res;

@@ -21,10 +21,6 @@ use Zf\Helper\Util;
 abstract class BaseUpload extends Base implements IUpload
 {
     /**
-     * @var bool 文件上传是否都放入tmp文件夹
-     */
-    public $useTmp = true;
-    /**
      * @var bool 临时文件上传后的有效期
      */
     public $tmpDay = 1;
@@ -40,15 +36,20 @@ abstract class BaseUpload extends Base implements IUpload
      * @var string tmp文件目录
      */
     public $defaultFolder = "default/";
+    /**
+     * @var callable 错误日志回调函数
+     */
+    public $callableErrorLog;
 
     /**
      * 构造上传文件名
      *
      * @param string $localFile
      * @param string $folder
+     * @param bool $useTmp
      * @return string
      */
-    protected function generateSaveName($localFile, $folder = null)
+    protected function generateSaveName($localFile, $folder = null, $useTmp = false)
     {
         if ($this->useRealExtension) {
             $filename = Util::uniqid() . '.' . pathinfo($localFile, PATHINFO_EXTENSION);
@@ -58,10 +59,37 @@ abstract class BaseUpload extends Base implements IUpload
         if (empty($folder)) {
             $folder = $this->defaultFolder;
         }
+        if ($useTmp) {
+            $folder = $this->tmpFolder . $folder;
+        }
         if (empty($folder)) {
             return $filename;
         }
         return trim($folder, "/") . '/' . $filename;
+    }
+
+    /**
+     * 日志记录， 需提供自定义日志记录 @param string $type
+     * @param string $keyword
+     * @param mixed $request
+     * @param mixed $message
+     * @param string $response
+     *
+     * @see \Zf\PhpUpload\base\BaseUpload::$callableErrorLog
+     */
+    protected function errorLog($type, $keyword, $request, $message = '', $response = null)
+    {
+        if (is_callable($this->callableErrorLog)) {
+            call_user_func_array($this->callableErrorLog, [
+                'type'    => $type,
+                'data'    => [
+                    'request'  => $request,
+                    'response' => $response,
+                ],
+                'keyword' => $keyword,
+                'message' => $message,
+            ]);
+        }
     }
 
     /**
@@ -161,10 +189,11 @@ abstract class BaseUpload extends Base implements IUpload
      * @param mixed $file
      * @param string|null $folder
      * @param string|null $saveName
+     * @param bool $useTmp
      * @return mixed
      * @throws UnsupportedException
      */
-    public function upload($file, $folder = null, $saveName = null)
+    public function upload($file, $folder = null, $saveName = null, $useTmp = false)
     {
         throw new UnsupportedException("不支持的功能");
     }

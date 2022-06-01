@@ -84,9 +84,10 @@ interface IUpload
      * @param mixed $file
      * @param string|null $folder
      * @param string|null $saveName
+     * @param bool $useTmp
      * @return mixed
      */
-    public function upload($file, $folder = null, $saveName = null);
+    public function upload($file, $folder = null, $saveName = null, $useTmp = false);
 
     /**
      * 复制文件
